@@ -2025,6 +2025,63 @@ function GiroRiscoTab({ rows, totais, resumoPorEmpresa, empresasMap, materiaisMa
   giroEmpresas, setGiroEmpresas, giroRegionais, setGiroRegionais, giroSkuSearch, setGiroSkuSearch,
   weights, setWeights, threshold, setThreshold }) {
 
+  const [sortKey, setSortKey] = useState('score');
+  const [sortDir, setSortDir] = useState('desc');
+
+  const getSortVal = (r, key) => {
+    switch (key) {
+      case 'empresa': return empresasMap[r.ce] || String(r.ce);
+      case 'regional': return r.dep;
+      case 'sku': return r.mat;
+      case 'descricao': return materiaisMap[r.mat] || '';
+      case 'valorReposicao': return r.valorReposicao;
+      case 'cmm': return r.cmm;
+      case 'qtdPuxada': return r.qtdPuxada;
+      case 'pedidoOriginal': return r.pedidoOriginal;
+      case 'razaoPuxadaCmm': return isFinite(r.razaoPuxadaCmm) ? r.razaoPuxadaCmm : 1e15;
+      case 'razaoDm1Cmm': return isFinite(r.razaoDm1Cmm) ? r.razaoDm1Cmm : 1e15;
+      case 'razaoDm2Cmm': return isFinite(r.razaoDm2Cmm) ? r.razaoDm2Cmm : 1e15;
+      case 'razaoDm3Cmm': return isFinite(r.razaoDm3Cmm) ? r.razaoDm3Cmm : 1e15;
+      case 'razaoNrmHist': return r.razaoNrmHist;
+      case 'cvPuxada': return r.cvPuxada;
+      case 'n3': return r.n3;
+      case 'giroEstoque': return isFinite(r.giroEstoque) ? r.giroEstoque : 1e15;
+      case 'riscoPuxada': return r.riscoPuxada ? 1 : 0;
+      case 'riscoDemandaM3': return r.riscoDemandaM3 ? 1 : 0;
+      case 'riscoNrmBaixo': return r.riscoNrmBaixo ? 1 : 0;
+      case 'riscoVolatilidade': return r.riscoVolatilidade ? 1 : 0;
+      case 'riscoOutlierRep': return r.riscoOutlierRep ? 1 : 0;
+      case 'riscoGiroBaixo': return r.riscoGiroBaixo ? 1 : 0;
+      case 'score': return r.score;
+      case 'riscoGiro': return r.riscoGiro ? 1 : 0;
+      case 'rcc': return r.rcc;
+      case 'sugestaoCompra': return r.riscoGiro ? r.sugestaoCompra : -1;
+      case 'valorEconomiaSugestao': return r.riscoGiro ? r.valorEconomiaSugestao : -1e15;
+      default: return 0;
+    }
+  };
+
+  const sortedRows = useMemo(() => {
+    const copy = [...rows];
+    copy.sort((a, b) => {
+      const va = getSortVal(a, sortKey), vb = getSortVal(b, sortKey);
+      const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return copy;
+  }, [rows, sortKey, sortDir]);
+
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('desc'); }
+  };
+
+  const Th = ({ label, sortKey: k, align }) => (
+    <th style={{...thStyle, textAlign: align || 'left', cursor:'pointer', userSelect:'none', whiteSpace:'nowrap'}} onClick={() => handleSort(k)}>
+      {label}{sortKey===k ? (sortDir==='asc' ? ' ▲' : ' ▼') : ''}
+    </th>
+  );
+
   const handleExport = () => {
     const data = rows.map(r => ({
       'Mês analisado': mesLabel(r.mes),
@@ -2189,37 +2246,37 @@ function GiroRiscoTab({ rows, totais, resumoPorEmpresa, empresasMap, materiaisMa
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
                 <thead>
                   <tr style={{ position:'sticky', top:0, background:T.panel2, zIndex:1 }}>
-                    <th style={thStyle}>Empresa</th>
-                    <th style={thStyle}>Regional</th>
-                    <th style={thStyle}>SKU</th>
-                    <th style={{...thStyle, minWidth:160}}>Descrição</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Reposição CC (R$)</th>
-                    <th style={{...thStyle, textAlign:'right'}}>CMM3</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Puxada do Mês</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Ped. Aberto</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Puxada/CMM</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Dm1/CMM</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Dm2/CMM</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Dm3/CMM</th>
-                    <th style={{...thStyle, textAlign:'right'}}>%NRM hist.</th>
-                    <th style={{...thStyle, textAlign:'right'}}>CV Puxada</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Saldo N3</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Giro</th>
-                    <th style={{...thStyle, textAlign:'center'}}>P1</th>
-                    <th style={{...thStyle, textAlign:'center'}}>P2</th>
-                    <th style={{...thStyle, textAlign:'center'}}>P3</th>
-                    <th style={{...thStyle, textAlign:'center'}}>P4</th>
-                    <th style={{...thStyle, textAlign:'center'}}>P5</th>
-                    <th style={{...thStyle, textAlign:'center'}}>P6</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Score</th>
-                    <th style={{...thStyle, textAlign:'center'}}>Risco?</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Reposição CC (qtd)</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Sugestão de Compra (qtd)</th>
-                    <th style={{...thStyle, textAlign:'right'}}>Economia (R$)</th>
+                    <Th label="Empresa" sortKey="empresa" />
+                    <Th label="Regional" sortKey="regional" align="right" />
+                    <Th label="SKU" sortKey="sku" align="right" />
+                    <Th label="Descrição" sortKey="descricao" />
+                    <Th label="Reposição CC (R$)" sortKey="valorReposicao" align="right" />
+                    <Th label="CMM3" sortKey="cmm" align="right" />
+                    <Th label="Puxada do Mês" sortKey="qtdPuxada" align="right" />
+                    <Th label="Ped. Aberto" sortKey="pedidoOriginal" align="right" />
+                    <Th label="Puxada/CMM" sortKey="razaoPuxadaCmm" align="right" />
+                    <Th label="Dm1/CMM" sortKey="razaoDm1Cmm" align="right" />
+                    <Th label="Dm2/CMM" sortKey="razaoDm2Cmm" align="right" />
+                    <Th label="Dm3/CMM" sortKey="razaoDm3Cmm" align="right" />
+                    <Th label="%NRM hist." sortKey="razaoNrmHist" align="right" />
+                    <Th label="CV Puxada" sortKey="cvPuxada" align="right" />
+                    <Th label="Saldo N3" sortKey="n3" align="right" />
+                    <Th label="Giro" sortKey="giroEstoque" align="right" />
+                    <Th label="P1" sortKey="riscoPuxada" align="center" />
+                    <Th label="P2" sortKey="riscoDemandaM3" align="center" />
+                    <Th label="P3" sortKey="riscoNrmBaixo" align="center" />
+                    <Th label="P4" sortKey="riscoVolatilidade" align="center" />
+                    <Th label="P5" sortKey="riscoOutlierRep" align="center" />
+                    <Th label="P6" sortKey="riscoGiroBaixo" align="center" />
+                    <Th label="Score" sortKey="score" align="right" />
+                    <Th label="Risco?" sortKey="riscoGiro" align="center" />
+                    <Th label="Reposição CC (qtd)" sortKey="rcc" align="right" />
+                    <Th label="Sugestão de Compra (qtd)" sortKey="sugestaoCompra" align="right" />
+                    <Th label="Economia (R$)" sortKey="valorEconomiaSugestao" align="right" />
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.slice(0, 500).map((r,i) => (
+                  {sortedRows.slice(0, 500).map((r,i) => (
                     <tr key={i} style={{ borderTop:`1px solid ${T.border}`, background: r.riscoGiro ? T.redDim+'22' : 'transparent' }}>
                       <td style={tdStyle}>{empresasMap[r.ce] || r.ce}</td>
                       <td style={{...tdStyle, fontFamily:T.mono, color:T.textDim}}>{r.dep}</td>
